@@ -22,8 +22,10 @@ class Model():
 
         cell = cell_fn(args.rnn_size, state_is_tuple=True)
 
-        self.cell = cell = rnn_cell.MultiRNNCell([cell] * args.num_layers, state_is_tuple=True)
+        cell = rnn_cell.DropoutWrapper(cell, input_keep_prob=args.dropout)
 
+        cell = rnn_cell.MultiRNNCell([cell] * args.num_layers, state_is_tuple=True)
+        self.cell = rnn_cell.DropoutWrapper(cell, output_keep_prob=args.dropout)
         self.input_data = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
         self.targets = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
         self.initial_state = cell.zero_state(args.batch_size, tf.float32)

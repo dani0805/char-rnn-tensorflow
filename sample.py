@@ -5,7 +5,7 @@ import tensorflow as tf
 import argparse
 import time
 import os
-from six.moves import cPickle
+import pickle
 
 from utils import TextLoader
 from model import Model
@@ -16,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir', type=str, default='save',
                        help='model directory to store checkpointed models')
-    parser.add_argument('-n', type=int, default=500,
+    parser.add_argument('-n', type=int, default=2000,
                        help='number of characters to sample')
     parser.add_argument('--prime', type=text_type, default=u' ',
                        help='prime text')
@@ -28,9 +28,9 @@ def main():
 
 def sample(args):
     with open(os.path.join(args.save_dir, 'config.pkl'), 'rb') as f:
-        saved_args = cPickle.load(f)
+        saved_args = pickle.load(f)
     with open(os.path.join(args.save_dir, 'chars_vocab.pkl'), 'rb') as f:
-        chars, vocab = cPickle.load(f)
+        chars, vocab = pickle.load(f)
     model = Model(saved_args, True)
     with tf.Session() as sess:
         tf.initialize_all_variables().run()

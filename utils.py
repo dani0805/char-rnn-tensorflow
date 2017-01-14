@@ -1,8 +1,9 @@
 import codecs
 import os
 import collections
-from six.moves import cPickle
 import numpy as np
+import pickle
+
 
 class TextLoader():
     def __init__(self, data_dir, batch_size, seq_length, encoding='utf-8'):
@@ -33,13 +34,13 @@ class TextLoader():
         self.vocab_size = len(self.chars)
         self.vocab = dict(zip(self.chars, range(len(self.chars))))
         with open(vocab_file, 'wb') as f:
-            cPickle.dump(self.chars, f)
+            pickle.dump(self.chars, f)
         self.tensor = np.array(list(map(self.vocab.get, data)))
         np.save(tensor_file, self.tensor)
 
     def load_preprocessed(self, vocab_file, tensor_file):
         with open(vocab_file, 'rb') as f:
-            self.chars = cPickle.load(f)
+            self.chars = pickle.load(f)
         self.vocab_size = len(self.chars)
         self.vocab = dict(zip(self.chars, range(len(self.chars))))
         self.tensor = np.load(tensor_file)
