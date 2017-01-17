@@ -70,8 +70,9 @@ class Model():
             return tf.nn.embedding_lookup(self.embedding, prev_symbol)
 
         outputs, last_state = seq2seq.rnn_decoder(inputs, self.initial_state, cell, loop_function=loop if infer else None, scope='rnnlm')
-        decoded_outputs = tf.nn.relu(tf.nn.conv1d(outputs, self.outputconv1filters,1,"SAME"))
-        output = tf.reshape(tf.concat(1, decoded_outputs), [-1, args.embed_size])
+        tensoroutput = tf.reshape(tf.concat(1, outputs), [args.batch_size, self.output_size, args.rnn_size])
+        decoded_outputs = tf.nn.relu(tf.nn.conv1d(tensoroutput, self.outputconv1filters,1,"SAME"))
+        output = tf.reshape(decoded_outputs, [-1, args.embed_size])
         print("output: ",output.get_shape())
         self.logits = tf.matmul(output, softmax_w) + softmax_b
         print("logits: ",self.logits.get_shape())
