@@ -36,19 +36,19 @@ def main():
                         help='dropout coefficient')
     parser.add_argument('--embed_size', type=int, default=16,
                         help='size of RNN hidden state')
-    parser.add_argument('--rnn_size', type=int, default=64,
+    parser.add_argument('--rnn_size', type=int, default=24,
                        help='size of RNN hidden state')
-    parser.add_argument('--num_layers', type=int, default=2,
+    parser.add_argument('--num_layers', type=int, default=1,
                        help='number of layers in the RNN')
     parser.add_argument('--model', type=str, default='lstm',
                        help='rnn, gru, or lstm')
-    parser.add_argument('--batch_size', type=int, default=34,
+    parser.add_argument('--batch_size', type=int, default=32,
                        help='minibatch size')
-    parser.add_argument('--seq_length', type=int, default=19,
+    parser.add_argument('--seq_length', type=int, default=128,
                        help='RNN sequence length')
-    parser.add_argument('--num_epochs', type=int, default=50,
+    parser.add_argument('--num_epochs', type=int, default=5,
                        help='number of epochs')
-    parser.add_argument('--save_every', type=int, default=1000,
+    parser.add_argument('--save_every', type=int, default=500,
                        help='save frequency')
     parser.add_argument('--grad_clip', type=float, default=5.,
                        help='clip gradients at this value')

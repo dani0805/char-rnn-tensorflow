@@ -7,6 +7,7 @@ import pickle
 
 class TextLoader():
     def __init__(self, data_dir, batch_size, seq_length, encoding='utf-8'):
+        self.counter = 0
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.seq_length = seq_length
@@ -62,8 +63,10 @@ class TextLoader():
         ydata[:-1] = xdata[1:]
         ydata[-1] = xdata[0]
         self.x_batches = np.split(xdata.reshape(self.batch_size, -1), self.num_batches, 1)
-        self.y_batches = np.split(ydata.reshape(self.batch_size, -1), self.num_batches, 1)
-
+        self.y_batches = [np.delete(np.delete(o,np.s_[:6],1),np.s_[1::2],1) for o in np.split(ydata.reshape(self.batch_size, -1), self.num_batches, 1)]
+        if self.counter == 0:
+            print(self.y_batches[0].shape)
+            self.counter = 1
 
     def next_batch(self):
         x, y = self.x_batches[self.pointer], self.y_batches[self.pointer]
