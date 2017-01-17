@@ -7,28 +7,46 @@ import time
 import os
 import pickle
 
+
 from utils import TextLoader
 from model import Model
 
+def variable_summaries(var):
+    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+    with tf.name_scope('summaries'):
+        mean = tf.reduce_mean(var)
+        tf.summary.scalar('mean', mean)
+        #with tf.name_scope('stddev'):
+        #    stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+        #tf.summary.scalar('stddev', stddev)
+        tf.summary.scalar('max', tf.reduce_max(var))
+        tf.summary.scalar('min', tf.reduce_min(var))
+        tf.summary.histogram('histogram', var)
+
 def main():
+    np.set_printoptions(threshold=np.nan)
     parser = argparse.ArgumentParser()
+    parser.add_argument('--log_dir', type=str, default='log',
+                        help='log directory for tensorboard')
     parser.add_argument('--data_dir', type=str, default='data/tinyshakespeare',
-                       help='data directory containing input.txt')
+                        help='data directory containing input.txt')
     parser.add_argument('--save_dir', type=str, default='save',
                        help='directory to store checkpointed models')
     parser.add_argument('--dropout', type=str, default=0.9,
                         help='dropout coefficient')
-    parser.add_argument('--rnn_size', type=int, default=512,
+    parser.add_argument('--embed_size', type=int, default=16,
+                        help='size of RNN hidden state')
+    parser.add_argument('--rnn_size', type=int, default=64,
                        help='size of RNN hidden state')
-    parser.add_argument('--num_layers', type=int, default=3,
+    parser.add_argument('--num_layers', type=int, default=2,
                        help='number of layers in the RNN')
     parser.add_argument('--model', type=str, default='lstm',
                        help='rnn, gru, or lstm')
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=34,
                        help='minibatch size')
-    parser.add_argument('--seq_length', type=int, default=128,
+    parser.add_argument('--seq_length', type=int, default=19,
                        help='RNN sequence length')
-    parser.add_argument('--num_epochs', type=int, default=500,
+    parser.add_argument('--num_epochs', type=int, default=50,
                        help='number of epochs')
     parser.add_argument('--save_every', type=int, default=1000,
                        help='save frequency')
@@ -52,7 +70,7 @@ def main():
 def train(args):
     data_loader = TextLoader(args.data_dir, args.batch_size, args.seq_length)
     args.vocab_size = data_loader.vocab_size
-    
+
     # check compatibility if training is continued from previously saved model
     if args.init_from is not None:
         # check if all necessary files exist 
@@ -82,7 +100,7 @@ def train(args):
         pickle.dump((data_loader.chars, data_loader.vocab), f)
         
     model = Model(args)
-
+    writer = tf.summary.FileWriter(args.log_dir, graph=tf.get_default_graph())
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver(tf.global_variables())
@@ -96,17 +114,31 @@ def train(args):
             for b in range(data_loader.num_batches):
                 start = time.time()
                 x, y = data_loader.next_batch()
+                if not (e * data_loader.num_batches + b) % 100:
+                    variable_summaries(x)
+                    variable_summaries(y)
+                #tf.summary.scalar("train_loss", train_loss)
+                #tf.summary.scalar("time/batch", end - start)
+                summary_op = tf.summary.merge_all()
+
                 feed = {model.input_data: x, model.targets: y}
                 for i, (c, h) in enumerate(model.initial_state):
                     feed[c] = state[i].c
                     feed[h] = state[i].h
-                train_loss, state, _ = sess.run([model.cost, model.final_state, model.train_op], feed)
+                embedding, train_loss, state, _, summary = sess.run([model.embedding, model.cost, model.final_state, model.train_op, summary_op], feed)
+                if b == e == 0:
+                    print(x)
+                    print(embedding)
+
+                writer.add_summary(summary, e * data_loader.num_batches + b)
                 end = time.time()
-                if not b % 100:
+                if not (e * data_loader.num_batches + b) % 100:
+                    # write log
                     print("{}/{} (epoch {}), train_loss = {:.3f}, time/batch = {:.3f}" \
                         .format(e * data_loader.num_batches + b,
                                 args.num_epochs * data_loader.num_batches,
                                 e, train_loss, end - start))
+
                 if (e * data_loader.num_batches + b) % args.save_every == 0\
                     or (e==args.num_epochs-1 and b == data_loader.num_batches-1): # save for the last result
                     checkpoint_path = os.path.join(args.save_dir, 'model.ckpt')
@@ -115,3 +147,4 @@ def train(args):
 
 if __name__ == '__main__':
     main()
+

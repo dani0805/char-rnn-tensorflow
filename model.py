@@ -3,6 +3,9 @@ from tensorflow.python.ops import rnn_cell
 from tensorflow.python.ops import seq2seq
 
 import numpy as np
+from tensorflow.python.ops.math_ops import matmul
+from tensorflow.python.ops.nn_ops import conv1d
+
 
 class Model():
     def __init__(self, args, infer=False):
@@ -24,27 +27,37 @@ class Model():
 
         cell = rnn_cell.DropoutWrapper(cell, input_keep_prob=args.dropout)
 
+
+
         cell = rnn_cell.MultiRNNCell([cell] * args.num_layers, state_is_tuple=True)
         self.cell = rnn_cell.DropoutWrapper(cell, output_keep_prob=args.dropout)
         self.input_data = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
         self.targets = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
         self.initial_state = cell.zero_state(args.batch_size, tf.float32)
 
-        with tf.variable_scope('rnnlm'):
-            softmax_w = tf.get_variable("softmax_w", [args.rnn_size, args.vocab_size])
-            softmax_b = tf.get_variable("softmax_b", [args.vocab_size])
-            with tf.device("/cpu:0"):
-                embedding = tf.get_variable("embedding", [args.vocab_size, args.rnn_size])
-                inputs = tf.split(1, args.seq_length, tf.nn.embedding_lookup(embedding, self.input_data))
-                inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
 
+        with tf.variable_scope('rnnlm'):
+            softmax_w = tf.get_variable("softmax_w", [args.embed_size, args.vocab_size])
+            softmax_b = tf.get_variable("softmax_b", [args.vocab_size])
+            self.l1conv3filters = tf.get_variable("l1_conv_filter",[3, args.embed_size, args.rnn_size])
+            self.outputconv1filters = tf.get_variable("output_conv_filter", [1, args.rnn_size, args.embed_size])
+            with tf.device("/cpu:0"):
+                self.embedding = tf.get_variable("embedding", [args.vocab_size, args.embed_size])
+
+                #inputs = tf.split(1, args.seq_length, tf.nn.embedding_lookup(self.embedding, self.input_data))
+                #inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
+                l1inputs = tf.nn.embedding_lookup(self.embedding, self.input_data)
+                l1conv3 = tf.nn.conv1d(l1inputs, self.l1conv3filters,1,"SAME")
+                inputs = tf.split(1, args.seq_length,l1conv3)
+                inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
         def loop(prev, _):
-            prev = tf.matmul(prev, softmax_w) + softmax_b
+            prev = tf.matmul(tf.nn.conv1d(prev, self.outputconv1filters,1,"SAME"), softmax_w) + softmax_b
             prev_symbol = tf.stop_gradient(tf.argmax(prev, 1))
-            return tf.nn.embedding_lookup(embedding, prev_symbol)
+            return tf.nn.embedding_lookup(self.embedding, prev_symbol)
 
         outputs, last_state = seq2seq.rnn_decoder(inputs, self.initial_state, cell, loop_function=loop if infer else None, scope='rnnlm')
-        output = tf.reshape(tf.concat(1, outputs), [-1, args.rnn_size])
+        decoded_outputs = tf.nn.conv1d(outputs, self.outputconv1filters,1,"SAME")
+        output = tf.reshape(tf.concat(1, decoded_outputs), [-1, args.embed_size])
         self.logits = tf.matmul(output, softmax_w) + softmax_b
         self.probs = tf.nn.softmax(self.logits)
         loss = seq2seq.sequence_loss_by_example([self.logits],
@@ -96,5 +109,6 @@ class Model():
             ret += pred
             char = pred
         return ret
+
 
 
