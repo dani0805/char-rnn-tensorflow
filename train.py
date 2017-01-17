@@ -36,9 +36,9 @@ def main():
                         help='dropout coefficient')
     parser.add_argument('--embed_size', type=int, default=20,
                         help='size of RNN hidden state')
-    parser.add_argument('--rnn_size', type=int, default=64,
+    parser.add_argument('--rnn_size', type=int, default=128,
                        help='size of RNN hidden state')
-    parser.add_argument('--num_layers', type=int, default=2,
+    parser.add_argument('--num_layers', type=int, default=1,
                        help='number of layers in the RNN')
     parser.add_argument('--model', type=str, default='lstm',
                        help='rnn, gru, or lstm')
@@ -125,10 +125,10 @@ def train(args):
                 for i, (c, h) in enumerate(model.initial_state):
                     feed[c] = state[i].c
                     feed[h] = state[i].h
-                embedding, train_loss, state, _, summary = sess.run([model.embedding, model.cost, model.final_state, model.train_op, summary_op], feed)
+                embedding, train_loss, state, _, summary, targets, logits = sess.run([model.embedding, model.cost, model.final_state, model.train_op, summary_op, model.targets, model.logits], feed)
                 if b == e == 0:
-                    print(x)
-                    print(embedding)
+                    print("logits :", logits[0])
+                    print("targets :", targets[0])
 
                 writer.add_summary(summary, e * data_loader.num_batches + b)
                 end = time.time()

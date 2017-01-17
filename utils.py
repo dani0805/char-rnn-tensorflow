@@ -60,10 +60,11 @@ class TextLoader():
         self.tensor = self.tensor[:self.num_batches * self.batch_size * self.seq_length]
         xdata = self.tensor
         ydata = np.copy(self.tensor)
-        ydata[:-1] = xdata[1:]
-        ydata[-1] = xdata[0]
+        ydata[:-2] = xdata[2:]
+        ydata[-2:] = xdata[:1]
         self.x_batches = np.split(xdata.reshape(self.batch_size, -1), self.num_batches, 1)
-        self.y_batches = [np.delete(np.delete(o,np.s_[:6],1),np.s_[1::2],1) for o in np.split(ydata.reshape(self.batch_size, -1), self.num_batches, 1)]
+        self.y_batches = np.split(ydata.reshape(self.batch_size, -1), self.num_batches, 1)
+        #print("batch 1 : ", self.x_batches[0], self.y_batches[0])
         if self.counter == 0:
             print(self.y_batches[0].shape)
             self.counter = 1
@@ -71,6 +72,11 @@ class TextLoader():
     def next_batch(self):
         x, y = self.x_batches[self.pointer], self.y_batches[self.pointer]
         self.pointer += 1
+        return x, y
+
+    def random_batch(self):
+        r = np.random.randint(0,self.num_batches)
+        x, y = self.x_batches[r], self.y_batches[r]
         return x, y
 
     def reset_batch_pointer(self):

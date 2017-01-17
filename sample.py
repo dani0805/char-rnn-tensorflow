@@ -16,6 +16,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir', type=str, default='save',
                        help='model directory to store checkpointed models')
+    parser.add_argument('--data_dir', type=str, default='data/tinyshakespeare',
+                        help='data directory containing input.txt')
+    parser.add_argument('--seq_length', type=int, default=64,
+                       help='RNN sequence length')
     parser.add_argument('-n', type=int, default=2000,
                        help='number of characters to sample')
     parser.add_argument('--prime', type=text_type, default=u' ',
@@ -38,7 +42,7 @@ def sample(args):
         ckpt = tf.train.get_checkpoint_state(args.save_dir)
         if ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
-            print(model.sample(sess, chars, vocab, args.n, args.prime, args.sample))
+            print(model.sample(sess, chars, vocab, args.data_dir, args.seq_length, args.n, args.prime, args.sample))
 
 if __name__ == '__main__':
     main()
