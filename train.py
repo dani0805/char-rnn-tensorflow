@@ -28,21 +28,23 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', type=str, default='log',
                         help='log directory for tensorboard')
-    parser.add_argument('--data_dir', type=str, default='data/tinyshakespeare',
+    parser.add_argument('--data_dir', type=str, default='data/europarl',
                         help='data directory containing input.txt')
     parser.add_argument('--save_dir', type=str, default='save',
                        help='directory to store checkpointed models')
     parser.add_argument('--dropout', type=str, default=0.95,
                         help='dropout coefficient')
     parser.add_argument('--embed_size', type=int, default=20,
-                        help='size of RNN hidden state')
-    parser.add_argument('--rnn_size', type=int, default=128,
-                       help='size of RNN hidden state')
+                        help='size of char embedding')
+    parser.add_argument('--conv_size', type=int, default=25,
+                       help='number of convolutional channels, determines the hidden RNN state size together with the number of conv layers')
     parser.add_argument('--num_layers', type=int, default=1,
                        help='number of layers in the RNN')
+    parser.add_argument('--conv_layers', type=int, default=1,
+                       help='number of layers in the conv net')
     parser.add_argument('--model', type=str, default='lstm',
                        help='rnn, gru, or lstm')
-    parser.add_argument('--batch_size', type=int, default=32,
+    parser.add_argument('--batch_size', type=int, default=16,
                        help='minibatch size')
     parser.add_argument('--seq_length', type=int, default=64,
                        help='RNN sequence length')
@@ -69,7 +71,8 @@ def main():
 
 def train(args):
     data_loader = TextLoader(args.data_dir, args.batch_size, args.seq_length)
-    args.vocab_size = data_loader.vocab_size
+    args.ivocab_size = data_loader.ivocab_size
+    args.tvocab_size = data_loader.tvocab_size
 
     # check compatibility if training is continued from previously saved model
     if args.init_from is not None:
@@ -96,9 +99,11 @@ def train(args):
         
     with open(os.path.join(args.save_dir, 'config.pkl'), 'wb') as f:
         pickle.dump(args, f)
-    with open(os.path.join(args.save_dir, 'chars_vocab.pkl'), 'wb') as f:
-        pickle.dump((data_loader.chars, data_loader.vocab), f)
-        
+    with open(os.path.join(args.save_dir, 'input_chars_vocab.pkl'), 'wb') as f:
+        pickle.dump((data_loader.ichars, data_loader.ivocab), f)
+    with open(os.path.join(args.save_dir, 'target_chars_vocab.pkl'), 'wb') as f:
+        pickle.dump((data_loader.tchars, data_loader.tvocab), f)
+
     model = Model(args)
     writer = tf.summary.FileWriter(args.log_dir, graph=tf.get_default_graph())
     with tf.Session() as sess:
@@ -122,10 +127,10 @@ def train(args):
                 summary_op = tf.summary.merge_all()
 
                 feed = {model.input_data: x, model.targets: y}
-                for i, (c, h) in enumerate(model.initial_state):
-                    feed[c] = state[i].c
-                    feed[h] = state[i].h
-                embedding, train_loss, state, _, summary, targets, logits = sess.run([model.embedding, model.cost, model.final_state, model.train_op, summary_op, model.targets, model.logits], feed)
+                #for i, (c, h) in enumerate(model.initial_state):
+                #    feed[c] = state[i].c
+                #    feed[h] = state[i].h
+                embedding, train_loss, _, summary, targets, logits = sess.run([model.embedding, model.cost, model.train_op, summary_op, model.targets, model.logits], feed)
                 if b == e == 0:
                     print("logits :", logits[0])
                     print("targets :", targets[0])
